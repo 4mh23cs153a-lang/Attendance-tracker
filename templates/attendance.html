@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+
+{% block title %}Mark Attendance - Attendance Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .attendance-container {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    
+    .attendance-form {
+        background: #f8f9fa;
+        padding: 20px;
+        border-radius: 8px;
+        margin-bottom: 30px;
+    }
+    
+    .attendance-table {
+        width: 100%;
+        border-collapse: collapse;
+    }
+    
+    .attendance-table tr {
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .attendance-table td {
+        padding: 15px;
+    }
+    
+    .attendance-table input[type="radio"] {
+        margin: 0 8px;
+        cursor: pointer;
+    }
+    
+    .radio-group {
+        display: flex;
+        gap: 15px;
+    }
+    
+    .action-buttons {
+        text-align: center;
+        margin-top: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>✏️ Mark Attendance</h2>
+
+<div class="attendance-container">
+    <div class="attendance-form">
+        <div class="form-group">
+            <label for="attendance_date">Select Date:</label>
+            <input type="date" id="attendance_date" value="{{ today }}">
+        </div>
+    </div>
+    
+    {% if students %}
+    <form id="attendanceForm" method="POST" action="/api/mark-attendance">
+        <table class="attendance-table">
+            <thead>
+                <tr>
+                    <th>Roll Number</th>
+                    <th>Student Name</th>
+                    <th>Status</th>
+                    <th>Remarks</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for student in students %}
+                {% set att = attendance_dict.get(student.id) %}
+                <tr>
+                    <td><strong>{{ student.roll_number }}</strong></td>
+                    <td>{{ student.name }}</td>
+                    <td>
+                        <div class="radio-group">
+                            <label>
+                                <input type="radio" name="status_{{ student.id }}" value="Present" {% if att and att.status == 'Present' %}checked{% endif %}>
+                                Present
+                            </label>
+                            <label>
+                                <input type="radio" name="status_{{ student.id }}" value="Absent" {% if att and att.status == 'Absent' %}checked{% endif %}>
+                                Absent
+                            </label>
+                            <label>
+                                <input type="radio" name="status_{{ student.id }}" value="Leave" {% if att and att.status == 'Leave' %}checked{% endif %}>
+                                Leave
+                            </label>
+                        </div>
+                    </td>
+                    <td>
+                        <input type="text" name="remarks_{{ student.id }}" placeholder="Add remarks" value="{{ att.remarks if att else '' }}" style="width: 100%; padding: 8px; border: 1px solid #dee2e6; border-radius: 4px;">
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+        
+        <div class="action-buttons">
+            <button type="button" class="btn" onclick="submitAttendance()">💾 Save Attendance</button>
+        </div>
+    </form>
+    {% else %}
+    <div class="card">
+        <p style="color: #666; text-align: center; padding: 40px;">No students added yet. <a href="/add-student">Add students</a> to mark attendance.</p>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+    const dateInput = document.getElementById('attendance_date');
+    
+    dateInput.addEventListener('change', function() {
+        loadAttendanceForDate(this.value);
+    });
+    
+    function loadAttendanceForDate(date) {
+        fetch(`/api/attendance-date?date=${date}`)
+            .then(response => response.json())
+            .then(data => {
+                data.forEach(record => {
+                    const statusRadios = document.querySelectorAll(`input[name="status_${record.student_id}"]`);
+                    statusRadios.forEach(radio => {
+                        if (radio.value === record.status) {
+                            radio.checked = true;
+                        }
+                    });
+                    
+                    const remarksInput = document.querySelector(`input[name="remarks_${record.student_id}"]`);
+                    if (remarksInput) {
+                        remarksInput.value = record.remarks || '';
+                    }
+                });
+            })
+            .catch(error => console.error('Error loading attendance:', error));
+    }
+    
+    function submitAttendance() {
+        const date = document.getElementById('attendance_date').value;
+        const students = {{ students|tojson }};
+        
+        let count = 0;
+        students.forEach(student => {
+            const statusRadios = document.querySelectorAll(`input[name="status_${student.id}"]:checked`);
+            if (statusRadios.length > 0) {
+                const status = statusRadios[0].value;
+                const remarks = document.querySelector(`input[name="remarks_${student.id}"]`).value;
+                
+                fetch('/api/mark-attendance', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        student_id: student.id,
+                        date: date,
+                        status: status,
+                        remarks: remarks
+                    })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    count++;
+                    if (count === students.length) {
+                        alert('Attendance saved successfully!');
+                    }
+                })
+                .catch(error => console.error('Error:', error));
+            }
+        });
+    }
+</script>
+{% endblock %}

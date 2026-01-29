@@ -1,0 +1,130 @@
+{% extends "base.html" %}
+
+{% block title %}Reports - Attendance Tracker{% endblock %}
+
+{% block extra_css %}
+<style>
+    .report-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    
+    .report-table th {
+        background: #667eea;
+        color: white;
+        padding: 15px;
+        text-align: left;
+    }
+    
+    .report-table td {
+        padding: 12px 15px;
+        border-bottom: 1px solid #dee2e6;
+    }
+    
+    .report-table tr:hover {
+        background: #f8f9fa;
+    }
+    
+    .progress-bar {
+        width: 100%;
+        height: 25px;
+        background: #e9ecef;
+        border-radius: 5px;
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+    }
+    
+    .progress-fill {
+        height: 100%;
+        background: linear-gradient(90deg, #28a745 0%, #20c997 100%);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 0.85em;
+        font-weight: 600;
+    }
+    
+    .high {
+        color: #28a745;
+    }
+    
+    .medium {
+        color: #ffc107;
+    }
+    
+    .low {
+        color: #dc3545;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<h2>📊 Attendance Reports</h2>
+
+{% if summary %}
+<table class="report-table">
+    <thead>
+        <tr>
+            <th>Roll Number</th>
+            <th>Student Name</th>
+            <th>Present</th>
+            <th>Absent</th>
+            <th>Leave</th>
+            <th>Total Classes</th>
+            <th>Attendance %</th>
+            <th>Status</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for record in summary %}
+        <tr>
+            <td><strong>{{ record.roll_number }}</strong></td>
+            <td>{{ record.name }}</td>
+            <td style="color: #28a745; font-weight: 600;">{{ record.present or 0 }}</td>
+            <td style="color: #dc3545; font-weight: 600;">{{ record.absent or 0 }}</td>
+            <td style="color: #ffc107; font-weight: 600;">{{ record.leave or 0 }}</td>
+            <td>{{ record.total or 0 }}</td>
+            <td>
+                {% if record.total and record.total > 0 %}
+                <div style="display: flex; align-items: center; gap: 10px;">
+                    <div class="progress-bar" style="flex: 1;">
+                        <div class="progress-fill" style="width: {{ record.percentage }}%;">
+                            {{ record.percentage }}%
+                        </div>
+                    </div>
+                </div>
+                {% else %}
+                <span style="color: #999;">-</span>
+                {% endif %}
+            </td>
+            <td>
+                {% if record.percentage >= 75 %}
+                <span style="background: #d4edda; color: #155724; padding: 5px 10px; border-radius: 5px; font-size: 0.9em;">✓ Pass</span>
+                {% elif record.percentage >= 50 %}
+                <span style="background: #fff3cd; color: #856404; padding: 5px 10px; border-radius: 5px; font-size: 0.9em;">⚠ Warning</span>
+                {% else %}
+                <span style="background: #f8d7da; color: #721c24; padding: 5px 10px; border-radius: 5px; font-size: 0.9em;">✗ At Risk</span>
+                {% endif %}
+            </td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<div style="margin-top: 30px; padding: 20px; background: #e7f3ff; border-left: 4px solid #2196F3; border-radius: 5px;">
+    <h4 style="color: #1976D2; margin-bottom: 10px;">ℹ️ Legend</h4>
+    <p style="margin: 5px 0; color: #333;">
+        <strong style="color: #28a745;">✓ Pass:</strong> Attendance ≥ 75% (Eligible for exams)<br>
+        <strong style="color: #ffc107;">⚠ Warning:</strong> Attendance 50-74% (Monitor closely)<br>
+        <strong style="color: #dc3545;">✗ At Risk:</strong> Attendance < 50% (May not be eligible for exams)
+    </p>
+</div>
+{% else %}
+<div class="card">
+    <p style="color: #666; text-align: center; padding: 40px;">No attendance records yet. <a href="/attendance">Mark attendance</a> to see reports.</p>
+</div>
+{% endif %}
+{% endblock %}
